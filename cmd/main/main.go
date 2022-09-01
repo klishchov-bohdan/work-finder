@@ -6,7 +6,5 @@ import (
 
 func main() {
 	scr := vacations.NewVacationScraper()
-	scr.Parse()
-	scr.NextPage()
-	scr.Parse()
+	scr.ParsePage()
 }
