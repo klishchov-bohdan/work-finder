@@ -1,42 +1,27 @@
 package scraper
 
 import (
-	"fmt"
-
-	"github.com/gocolly/colly"
+	"github.com/geziyor/geziyor"
+	"github.com/geziyor/geziyor/client"
+	"github.com/geziyor/geziyor/export"
 )
 
 type Scraper struct {
 	url string
-	c   *colly.Collector
 }
 
 func NewScrapper(url string) *Scraper {
 	return &Scraper{
-		url: url,
-		c: colly.NewCollector(
-			colly.AllowedDomains("www.work.ua"),
-			colly.MaxDepth(30),
-		),
+		url: "https://www.work.ua/ru/jobs/?advs=1&category=20+22+14+23+4+2+1+8+24+10+12+3+9+15+19+6+6792+26+5+17+25+21+30+13+27+11+7+18",
 	}
 }
 
-func (scr *Scraper) GetVacationNames() []string {
-	var vNames []string
-	scr.c.OnHTML("div.card h2 a", func(e *colly.HTMLElement) {
-		vNames = append(vNames, e.Text)
-	})
-	scr.c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL.String())
+func (scr *Scraper) GetVacationNames() {
+	geziyor.NewGeziyor(&geziyor.Options{
+		StartURLs: []string{scr.url},
+		ParseFunc: func(g *geziyor.Geziyor, r *client.Response) {
 
-	})
-	scr.c.OnError(func(r *colly.Response, err error) {
-		fmt.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
-	})
-	scr.c.OnHTML("div#pjax-job-list nav ul.pagination li.no-style", func(e *colly.HTMLElement) {
-		t := e.ChildAttr("a", "href")
-		e.Request.Visit("https://www.work.ua" + t)
-	})
-	scr.c.Visit(scr.url)
-	return vNames
+		},
+		Exporters: []export.Exporter{&export.JSON{}},
+	}).Start()
 }
