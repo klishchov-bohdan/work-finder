@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/geziyor/geziyor"
@@ -44,13 +46,31 @@ func (vs *VacationScraper) ParsePage() {
 			r.HTMLDoc.Find("div.card.job-link").Each(func(i int, s *goquery.Selection) {
 				if href, ok := s.Find("h2 a").Attr("href"); ok {
 					g.Get(r.JoinURL(href), func(_g *geziyor.Geziyor, _r *client.Response) {
-						html, _ := _r.HTMLDoc.Find("div.card p:nth-child(5) ").Filter(":not(span)").Html()
-						fmt.Print(html)
+						customer, address, conditions, customerDetail := "", "", "", ""
+						_r.HTMLDoc.Find("div.card p").Each(func(_i int, _s *goquery.Selection) {
+							if attr, exists := _s.Find("span").Attr("title"); exists && attr == "Данные о компании" {
+								customer = _s.Find("a b").Text()
+								customerDetail = _s.Find("span.add-top-xs").Text()
+							}
+							if attr, exists := _s.Find("span").Attr("title"); exists && attr == "Адрес работы" {
+								_s.Children().RemoveFiltered("span")
+								address = _s.Text()
+							}
+							if attr, exists := _s.Find("span").Attr("title"); exists && attr == "Условия и требования" {
+								conditions = _s.Text()
+							}
+						})
+						logo, _ := _r.HTMLDoc.Find("div.card p.logo-job-container a img").Attr("src")
+						space := regexp.MustCompile(`\s+`)
 						g.Exports <- map[string]interface{}{
-							"title":          s.Find("h2 a").Text(),
-							"sallary":        _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm b.text-black").Text(),
-							"sallary_detail": _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm span.text-muted").Text(),
-							"customer":       _r.HTMLDoc.Find("div.card p:nth-child(5) ").Text(),
+							"title":           s.Find("h2 a").Text(),
+							"sallary":         _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm b.text-black").Text(),
+							"sallary_detail":  _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm span.text-muted").Text(),
+							"customer":        customer,
+							"address":         strings.TrimSpace(strings.ReplaceAll(address, "\n", "")),
+							"logo":            logo,
+							"conditions":      strings.TrimSpace(strings.ReplaceAll(conditions, "\n", "")),
+							"customer_detail": space.ReplaceAllString(strings.TrimSpace(strings.ReplaceAll(customerDetail, "\n", "")), " "),
 						}
 					})
 				}
