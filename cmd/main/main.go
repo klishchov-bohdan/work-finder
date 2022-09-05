@@ -1,10 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"workerFinder/internal/scraper/vacations"
 )
 
 func main() {
 	scr := vacations.NewVacationScraper()
-	scr.ParsePage()
+	fmt.Println(scr.GetMaxPageNum())
 }

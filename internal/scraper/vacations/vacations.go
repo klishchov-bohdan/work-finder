@@ -2,6 +2,7 @@ package vacations
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"regexp"
@@ -64,13 +65,13 @@ func (vs *VacationScraper) ParsePage() {
 						space := regexp.MustCompile(`\s+`)
 						g.Exports <- map[string]interface{}{
 							"title":           s.Find("h2 a").Text(),
-							"sallary":         _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm b.text-black").Text(),
-							"sallary_detail":  _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm span.text-muted").Text(),
+							"salary":          _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm b.text-black").Text(),
+							"salary_detail":   _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm span.text-muted").Text(),
 							"customer":        customer,
+							"customer_detail": space.ReplaceAllString(strings.TrimSpace(strings.ReplaceAll(customerDetail, "\n", "")), " "),
 							"address":         strings.TrimSpace(strings.ReplaceAll(address, "\n", "")),
 							"logo":            logo,
 							"conditions":      strings.TrimSpace(strings.ReplaceAll(conditions, "\n", "")),
-							"customer_detail": space.ReplaceAllString(strings.TrimSpace(strings.ReplaceAll(customerDetail, "\n", "")), " "),
 						}
 					})
 				}
@@ -82,6 +83,22 @@ func (vs *VacationScraper) ParsePage() {
 
 func (vs *VacationScraper) ParsePages() {
 
+}
+
+func (vs *VacationScraper) GetMaxPageNum() string {
+	var maxPageNum string
+	geziyor.NewGeziyor(&geziyor.Options{
+		StartURLs: []string{vs.URL.String()},
+		ParseFunc: func(g *geziyor.Geziyor, r *client.Response) {
+			fmt.Println(r.HTMLDoc.Find("div#pjax-job-list nav ul li:nth-child(5) a").Text())
+			var err error
+			maxPageNum = r.HTMLDoc.Find("div.card nav ul:nth-child(6) a").Text()
+			if err != nil {
+				log.Fatal("VacationScraper.GetMaxPageNum():", err)
+			}
+		},
+	}).Start()
+	return maxPageNum
 }
 
 func clearOut() {
