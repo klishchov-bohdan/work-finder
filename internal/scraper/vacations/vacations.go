@@ -8,11 +8,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
+	"workerFinder/internal/models"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/geziyor/geziyor"
 	"github.com/geziyor/geziyor/client"
-	"github.com/geziyor/geziyor/export"
 )
 
 type VacationScraper struct {
@@ -39,10 +40,10 @@ func (vs *VacationScraper) NextPage() {
 	vs.URL.RawQuery = values.Encode()
 }
 
-func (vs *VacationScraper) ParsePage() {
-	clearOut()
+func (vs *VacationScraper) ParsePage() (vacations []*models.Vacation) {
 	geziyor.NewGeziyor(&geziyor.Options{
-		StartURLs: []string{vs.URL.String()},
+		RequestDelay: 100 * time.Millisecond,
+		StartURLs:    []string{vs.URL.String()},
 		ParseFunc: func(g *geziyor.Geziyor, r *client.Response) {
 			r.HTMLDoc.Find("div.card.job-link").Each(func(i int, s *goquery.Selection) {
 				if href, ok := s.Find("h2 a").Attr("href"); ok {
@@ -63,36 +64,32 @@ func (vs *VacationScraper) ParsePage() {
 						})
 						logo, _ := _r.HTMLDoc.Find("div.card p.logo-job-container a img").Attr("src")
 						space := regexp.MustCompile(`\s+`)
-						g.Exports <- map[string]interface{}{
-							"title":           s.Find("h2 a").Text(),
-							"salary":          _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm b.text-black").Text(),
-							"salary_detail":   _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm span.text-muted").Text(),
-							"customer":        customer,
-							"customer_detail": space.ReplaceAllString(strings.TrimSpace(strings.ReplaceAll(customerDetail, "\n", "")), " "),
-							"address":         strings.TrimSpace(strings.ReplaceAll(address, "\n", "")),
-							"logo":            logo,
-							"conditions":      strings.TrimSpace(strings.ReplaceAll(conditions, "\n", "")),
+						vacation := &models.Vacation{
+							Title:          s.Find("h2 a").Text(),
+							Salary:         _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm b.text-black").Text(),
+							SalaryDetail:   _r.HTMLDoc.Find("div.card p.text-indent.text-muted.add-top-sm span.text-muted").Text(),
+							Customer:       customer,
+							CustomerDetail: space.ReplaceAllString(strings.TrimSpace(strings.ReplaceAll(customerDetail, "\n", "")), " "),
+							Address:        strings.TrimSpace(strings.ReplaceAll(address, "\n", "")),
+							Conditions:     strings.TrimSpace(strings.ReplaceAll(conditions, "\n", "")),
+							Logo:           logo,
 						}
+						vacations = append(vacations, vacation)
 					})
 				}
 			})
 		},
-		Exporters: []export.Exporter{&export.JSON{}},
 	}).Start()
+	return
 }
 
-func (vs *VacationScraper) ParsePages() {
-
-}
-
-func (vs *VacationScraper) GetMaxPageNum() string {
-	var maxPageNum string
+func (vs *VacationScraper) GetMaxPageNum() uint64 {
+	var maxPageNum uint64
 	geziyor.NewGeziyor(&geziyor.Options{
 		StartURLs: []string{vs.URL.String()},
 		ParseFunc: func(g *geziyor.Geziyor, r *client.Response) {
-			fmt.Println(r.HTMLDoc.Find("div#pjax-job-list nav ul li:nth-child(5) a").Text())
 			var err error
-			maxPageNum = r.HTMLDoc.Find("div.card nav ul:nth-child(6) a").Text()
+			maxPageNum, err = strconv.ParseUint(r.HTMLDoc.Find("div#pjax-job-list nav ul li:nth-child(6)").Text(), 10, 64)
 			if err != nil {
 				log.Fatal("VacationScraper.GetMaxPageNum():", err)
 			}

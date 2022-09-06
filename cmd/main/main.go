@@ -2,10 +2,20 @@ package main
 
 import (
 	"fmt"
-	"workerFinder/internal/scraper/vacations"
+	"log"
+	"workerFinder/internal/scraper"
 )
 
 func main() {
-	scr := vacations.NewVacationScraper()
-	fmt.Println(scr.GetMaxPageNum())
+	scr := scraper.NewScrapper()
+	vpgs, err := scr.GetVacationPages(10)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, vp := range vpgs {
+		fmt.Println(vp.PageNum)
+		for _, v := range vp.Vacations {
+			fmt.Println(*v)
+		}
+	}
 }
