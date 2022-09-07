@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"log"
 	"workerFinder/internal/scraper"
+	"workerFinder/internal/scraper/vacations"
 )
 
 func main() {
 	scr := scraper.NewScrapper()
-	vpgs, err := scr.GetVacationPages(10)
+	codes := vacations.NewCategoryCodes()
+	vpgs, err := scr.GetVacationPages(2, codes.Accounting, codes.BankingFinance)
 	if err != nil {
 		log.Fatal(err)
 	}

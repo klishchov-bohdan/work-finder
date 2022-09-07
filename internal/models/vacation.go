@@ -9,4 +9,5 @@ type Vacation struct {
 	Address        string `json:"address"`
 	Conditions     string `json:"conditions"`
 	Logo           string `json:"logo"`
+	URL            string `json:"url"`
 }

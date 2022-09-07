@@ -33,6 +33,12 @@ func NewVacationScraper() *VacationScraper {
 	}
 }
 
+func (vs *VacationScraper) SetCategories(codes ...string) {
+	values, _ := url.ParseQuery(vs.URL.RawQuery)
+	values.Set("category", strings.Join(codes, " "))
+	vs.URL.RawQuery = values.Encode()
+}
+
 func (vs *VacationScraper) NextPage() {
 	vs.CurrentPage++
 	values, _ := url.ParseQuery(vs.URL.RawQuery)
@@ -40,9 +46,16 @@ func (vs *VacationScraper) NextPage() {
 	vs.URL.RawQuery = values.Encode()
 }
 
+func (vs *VacationScraper) ResetCurrentPage() {
+	vs.CurrentPage = 1
+	values, _ := url.ParseQuery(vs.URL.RawQuery)
+	values.Set("page", strconv.FormatUint(vs.CurrentPage, 10))
+	vs.URL.RawQuery = values.Encode()
+}
+
 func (vs *VacationScraper) ParsePage() (vacations []*models.Vacation) {
 	geziyor.NewGeziyor(&geziyor.Options{
-		RequestDelay: 100 * time.Millisecond,
+		RequestDelay: 150 * time.Millisecond,
 		StartURLs:    []string{vs.URL.String()},
 		ParseFunc: func(g *geziyor.Geziyor, r *client.Response) {
 			r.HTMLDoc.Find("div.card.job-link").Each(func(i int, s *goquery.Selection) {
@@ -73,6 +86,7 @@ func (vs *VacationScraper) ParsePage() (vacations []*models.Vacation) {
 							Address:        strings.TrimSpace(strings.ReplaceAll(address, "\n", "")),
 							Conditions:     strings.TrimSpace(strings.ReplaceAll(conditions, "\n", "")),
 							Logo:           logo,
+							URL:            _r.Request.URL.String(),
 						}
 						vacations = append(vacations, vacation)
 					})
@@ -86,7 +100,13 @@ func (vs *VacationScraper) ParsePage() (vacations []*models.Vacation) {
 func (vs *VacationScraper) GetMaxPageNum() uint64 {
 	var maxPageNum uint64
 	geziyor.NewGeziyor(&geziyor.Options{
-		StartURLs: []string{vs.URL.String()},
+		StartURLs: []string{func() string {
+			URL := vs.URL
+			values, _ := url.ParseQuery(vs.URL.RawQuery)
+			values.Del("page")
+			URL.RawQuery = values.Encode()
+			return URL.String()
+		}()},
 		ParseFunc: func(g *geziyor.Geziyor, r *client.Response) {
 			var err error
 			maxPageNum, err = strconv.ParseUint(r.HTMLDoc.Find("div#pjax-job-list nav ul li:nth-child(6)").Text(), 10, 64)

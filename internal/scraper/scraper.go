@@ -16,7 +16,11 @@ func NewScrapper() *Scraper {
 	}
 }
 
-func (scr *Scraper) GetVacationPages(pageCount uint64) (vacationPages []*models.VacationPage, err error) {
+func (scr *Scraper) GetVacationPages(pageCount uint64, codes ...string) (vacationPages []*models.VacationPage, err error) {
+	scr.vs.ResetCurrentPage()
+	if len(codes) != 0 {
+		scr.vs.SetCategories(codes...)
+	}
 	if pageCount > scr.vs.GetMaxPageNum() {
 		return nil, errors.New("Scraper.GetVacationPages(): the page number can`t be bigger then page count")
 	}
